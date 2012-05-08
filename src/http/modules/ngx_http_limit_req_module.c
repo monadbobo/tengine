@@ -356,7 +356,7 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
 
             if (limit_req[i].forbid_action.len == 0) {
 
-                return NGX_HTTP_SERVICE_UNAVAILABLE;
+                return NGX_HTTP_TOO_MANY_REQUESTS;
             } else if (limit_req[i].forbid_action.data[0] == '@') {
 
                 ngx_log_error(lrcf->limit_log_level, r->connection->log, 0,
