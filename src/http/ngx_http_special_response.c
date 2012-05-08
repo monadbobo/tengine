@@ -401,8 +401,7 @@ static char ngx_http_error_511_page[] =
 "<body bgcolor=\"white\">" CRLF
 "<h1>511 Network Authentication Required</h1>" CRLF
 "<p>You need to "
-"authenticate with the local network</a> in order to gain "
-"access.</p>"
+"authenticate with the local network in order to gain access."
 ;
 
 
