@@ -454,6 +454,7 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_null_string,                     /* 427 */
     ngx_null_string,                     /* 428 */
     ngx_string(ngx_http_error_429_page),
+    ngx_null_string,                     /* 430 */
     ngx_string(ngx_http_error_431_page),
 
 #define NGX_HTTP_LAST_4XX  432
