@@ -332,7 +332,12 @@ size_t ngx_fs_bsize(u_char *name);
 
 #if (NGX_HAVE_FILE_AIO)
 
+#define ngx_file_aio_read_n         "ngx_file_aio_read"
 ssize_t ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size,
+    off_t offset, ngx_pool_t *pool);
+
+#define ngx_file_aio_write_n         "ngx_file_aio_write"
+ssize_t ngx_file_aio_write(ngx_file_t *file, u_char *buf, size_t size,
     off_t offset, ngx_pool_t *pool);
 
 extern ngx_uint_t  ngx_file_aio;

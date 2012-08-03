@@ -728,6 +728,7 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
     uint64_t          ready;
     ngx_err_t         err;
     ngx_event_t      *e;
+    ngx_aiocb_t      *aiocb;
     ngx_event_aio_t  *aio;
     struct io_event   event[64];
     struct timespec   ts;
@@ -774,6 +775,19 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
                                "io_event: %uXL %uXL %L %L",
                                 event[i].data, event[i].obj,
                                 event[i].res, event[i].res2);
+
+                aiocb = (ngx_aiocb_t *) (uintptr_t) event[i].obj;
+
+                if (aiocb->aio_lio_opcode == IOCB_CMD_PWRITE) {
+                    if ((ssize_t) aiocb->aio_nbytes == event[i].res) {
+                        continue;
+                    }
+
+                    ngx_log_error(NGX_LOG_ALERT, ev->log, -(event[i].res),
+                                  ngx_file_aio_write_n " failed");
+
+                    continue;
+                }
 
                 e = (ngx_event_t *) (uintptr_t) event[i].data;
 

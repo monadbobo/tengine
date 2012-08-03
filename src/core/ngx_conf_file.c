@@ -952,6 +952,8 @@ ngx_conf_open_file(ngx_cycle_t *cycle, ngx_str_t *name)
         return NULL;
     }
 
+    ngx_memzero(file, sizeof(ngx_open_file_t));
+
     if (name->len) {
         file->fd = NGX_INVALID_FILE;
         file->name = full;

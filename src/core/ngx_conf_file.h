@@ -95,9 +95,9 @@ struct ngx_open_file_s {
     u_char               *pos;
     u_char               *last;
 
-#if 0
     /* e.g. append mode, error_log */
     ngx_uint_t            flags;
+#if 0
     /* e.g. reopen db file */
     ngx_uint_t          (*handler)(void *data, ngx_open_file_t *file);
     void                 *data;

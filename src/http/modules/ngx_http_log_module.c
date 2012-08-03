@@ -80,6 +80,9 @@ typedef struct {
     ngx_uint_t                  scope_count;
     ngx_uint_t                  sample_count;
     ngx_uint_t                  scatter_count;
+#if (NGX_HAVE_FILE_AIO)
+    unsigned                    aio:1;
+#endif
 } ngx_http_log_t;
 
 
@@ -106,7 +109,9 @@ typedef struct {
 static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
     u_char *buf, size_t len);
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
-    ngx_http_log_script_t *script, u_char **name, u_char *buf, size_t len);
+    ngx_http_log_t *log, u_char **name, u_char *buf, size_t len);
+static ssize_t ngx_http_log_write_file(ngx_http_request_t *r,
+    ngx_http_log_t *log, ngx_fd_t fd, u_char *buf, size_t len);
 
 static u_char *ngx_http_log_connection(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
@@ -382,11 +387,25 @@ ngx_http_log_handler(ngx_http_request_t *r)
             }
         }
 
+#if (NGX_HAVE_FILE_AIO)
+        ngx_http_core_loc_conf_t     *clcf;
+
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        if (log->aio) {
+            len = ngx_align(len, clcf->directio_alignment);
+        }
+#endif
         line = ngx_pnalloc(r->pool, len);
+
         if (line == NULL) {
             return NGX_ERROR;
         }
 
+#if (NGX_HAVE_FILE_AIO)
+        if (log->aio) {
+            line = ngx_align_ptr(line, clcf->directio_alignment);
+        }
+#endif
         p = line;
 
         for (i = 0; i < log[l].format->ops->nelts; i++) {
@@ -418,24 +437,25 @@ static void
 ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log, u_char *buf,
     size_t len)
 {
-    u_char     *name;
-    time_t      now;
-    ssize_t     n;
-    ngx_err_t   err;
+    u_char                   *name;
+    time_t                    now;
+    ssize_t                   n;
+    ngx_err_t                 err;
 
     if (log->script == NULL) {
         name = log->file->name.data;
         if (name == NULL) {
             name = (u_char *) "The pipe";
         }
-        n = ngx_write_fd(log->file->fd, buf, len);
+
+        n = ngx_http_log_write_file(r, log, log->file->fd, buf, len);
 
     } else {
         name = NULL;
-        n = ngx_http_log_script_write(r, log->script, &name, buf, len);
+        n = ngx_http_log_script_write(r, log, &name, buf, len);
     }
 
-    if (n == (ssize_t) len) {
+    if (n == NGX_AGAIN || n == (ssize_t) len) {
         return;
     }
 
@@ -469,15 +489,18 @@ ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log, u_char *buf,
 
 
 static ssize_t
-ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
+ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_t *http_log,
     u_char **name, u_char *buf, size_t len)
 {
     size_t                     root;
     ssize_t                    n;
     ngx_str_t                  log, path;
     ngx_open_file_info_t       of;
+    ngx_http_log_script_t     *script;
     ngx_http_log_loc_conf_t   *llcf;
     ngx_http_core_loc_conf_t  *clcf;
+
+    script = http_log->script;
 
     if (!r->root_tested) {
 
@@ -546,7 +569,14 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     of.log = 1;
     of.valid = llcf->open_file_cache_valid;
     of.min_uses = llcf->open_file_cache_min_uses;
+
+#if (NGX_HAVE_FILE_AIO)
+    if(http_log->aio) {
+        of.directio = NGX_OPEN_FILE_DIRECTIO_OFF;
+    }
+#else
     of.directio = NGX_OPEN_FILE_DIRECTIO_OFF;
+#endif
 
     if (ngx_open_cached_file(llcf->open_file_cache, &log, &of, r->pool)
         != NGX_OK)
@@ -560,8 +590,45 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http log #%d", of.fd);
 
-    n = ngx_write_fd(of.fd, buf, len);
+    n = ngx_http_log_write_file(r, http_log, of.fd, buf, len);
 
+    return n;
+}
+
+
+static ssize_t
+ngx_http_log_write_file(ngx_http_request_t *r, ngx_http_log_t *log, ngx_fd_t fd, u_char *buf,
+    size_t len)
+{
+    ssize_t                   n;
+#if (NGX_HAVE_FILE_AIO)
+    size_t                    len2;
+    ngx_uint_t                i;
+    ngx_file_t                file;
+    ngx_http_core_loc_conf_t *clcf;
+
+    if (log->aio) {
+        ngx_memzero(&file, sizeof(ngx_file_t));
+
+        file.fd = fd;
+        file.log = r->connection->log;
+
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        len2 = ngx_align(len, clcf->directio_alignment);
+        for (i = len; i < (len2 - 1); i++) {
+            buf[i] = 0x20;
+        }
+
+        buf[i] = LF;
+        n = ngx_file_aio_write(&file, buf, len2, 0, r->connection->pool);
+    } else {
+        n = ngx_write_fd(fd, buf, len);
+    }
+
+#else
+    n = ngx_write_fd(fd, buf, len);
+#endif
     return n;
 }
 
@@ -1055,8 +1122,8 @@ ngx_http_log_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #endif
 
     lmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_log_module);
-    fmt = lmcf->formats.elts;
 
+    fmt = lmcf->formats.elts;
     /* the default "combined" format */
     log->format = &fmt[0];
     lmcf->combined_used = 1;
@@ -1127,15 +1194,29 @@ ngx_http_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             log->file->name = name;
         }
     } else {
+
+#if (NGX_HAVE_FILE_AIO)
+        if (ngx_strncmp(value[1].data, "aio:", 4) == 0) {
+            log->aio = 1;
+            value[1].data += 4;
+            value[1].len -= 4;
+        }
+#endif
         n = ngx_http_script_variables_count(&value[1]);
 
         if (n == 0) {
+
             log->file = ngx_conf_open_file(cf->cycle, &value[1]);
             if (log->file == NULL) {
                 return NGX_CONF_ERROR;
             }
-
+#if (NGX_HAVE_FILE_AIO)
+            if (log->aio) {
+                log->file->flags = O_DIRECT;
+            }
+#endif
         } else {
+
             if (ngx_conf_full_name(cf->cycle, &value[1], 0) != NGX_OK) {
                 return NGX_CONF_ERROR;
             }
@@ -1227,11 +1308,21 @@ rest:
                 return NGX_CONF_ERROR;
             }
 
+#if (NGX_HAVE_FILE_AIO)
+            ngx_http_core_loc_conf_t  *clcf;
+            clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+            if (log->aio) {
+                buf = ngx_align(buf, clcf->directio_alignment);
+            }
+#endif
             log->file->buffer = ngx_palloc(cf->pool, buf);
             if (log->file->buffer == NULL) {
                 return NGX_CONF_ERROR;
             }
 
+#if (NGX_HAVE_FILE_AIO)
+            log->file->buffer = ngx_align_ptr(log->file->buffer, clcf->directio_alignment);
+#endif
             log->file->pos = log->file->buffer;
             log->file->last = log->file->buffer + buf;
 
