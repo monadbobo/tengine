@@ -91,15 +91,17 @@
 #define NGX_HTTP_UNSUPPORTED_MEDIA_TYPE    415
 #define NGX_HTTP_RANGE_NOT_SATISFIABLE     416
 
+/* RFC 6585 */
+#define NGX_HTTP_TOO_MANY_REQUESTS         429
+#define NGX_HTTP_REQUEST_HEADER_TOO_LARGE  431
+
 
 /* Our own HTTP codes */
 
 /* The special code to close connection without any response */
 #define NGX_HTTP_CLOSE                     444
 
-#define NGX_HTTP_NGINX_CODES               494
-
-#define NGX_HTTP_REQUEST_HEADER_TOO_LARGE  494
+#define NGX_HTTP_NGINX_CODES               495
 
 #define NGX_HTTPS_CERT_ERROR               495
 #define NGX_HTTPS_NO_CERT                  496
@@ -127,6 +129,9 @@
 #define NGX_HTTP_SERVICE_UNAVAILABLE       503
 #define NGX_HTTP_GATEWAY_TIME_OUT          504
 #define NGX_HTTP_INSUFFICIENT_STORAGE      507
+
+/* RFC 6585 */
+#define NGX_HTTP_NETWORK_AUTHENTICATION_REQUIRED      511
 
 
 #define NGX_HTTP_LOWLEVEL_BUFFERED         0xf0

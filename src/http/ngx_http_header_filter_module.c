@@ -99,16 +99,24 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("415 Unsupported Media Type"),
     ngx_string("416 Requested Range Not Satisfiable"),
 
-    /* ngx_null_string, */  /* "417 Expectation Failed" */
-    /* ngx_null_string, */  /* "418 unused" */
-    /* ngx_null_string, */  /* "419 unused" */
-    /* ngx_null_string, */  /* "420 unused" */
-    /* ngx_null_string, */  /* "421 unused" */
-    /* ngx_null_string, */  /* "422 Unprocessable Entity" */
-    /* ngx_null_string, */  /* "423 Locked" */
-    /* ngx_null_string, */  /* "424 Failed Dependency" */
+    ngx_null_string,  /* "417 Expectation Failed" */
+    ngx_null_string,  /* "418 unused" */
+    ngx_null_string,  /* "419 unused" */
+    ngx_null_string,  /* "420 unused" */
+    ngx_null_string,  /* "421 unused" */
+    ngx_null_string,  /* "422 Unprocessable Entity" */
+    ngx_null_string,  /* "423 Locked" */
+    ngx_null_string,  /* "424 Failed Dependency" */
+    ngx_null_string,  /* "425 unused" */
+    ngx_null_string,  /* "426 unused" */
+    ngx_null_string,  /* "427 unused" */
+    ngx_null_string,  /* "428 Precondition Required" */
 
-#define NGX_HTTP_LAST_4XX  417
+    ngx_string("429 Too Many Requests"),
+    ngx_null_string,  /* "430 unused" */
+    ngx_string("431 Request Header Fields Too Large"),
+
+#define NGX_HTTP_LAST_4XX  432
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
     ngx_string("500 Internal Server Error"),
@@ -119,12 +127,16 @@ static ngx_str_t ngx_http_status_lines[] = {
 
     ngx_null_string,        /* "505 HTTP Version Not Supported" */
     ngx_null_string,        /* "506 Variant Also Negotiates" */
-    ngx_string("507 Insufficient Storage"),
-    /* ngx_null_string, */  /* "508 unused" */
-    /* ngx_null_string, */  /* "509 unused" */
-    /* ngx_null_string, */  /* "510 Not Extended" */
 
-#define NGX_HTTP_LAST_5XX  508
+    ngx_string("507 Insufficient Storage"),
+
+    ngx_null_string,        /* "508 unused" */
+    ngx_null_string,        /* "509 unused" */
+    ngx_null_string,        /* "510 Not Extended" */
+
+    ngx_string("511 Network Authentication Required"),
+
+#define NGX_HTTP_LAST_5XX  512
 
 };
 

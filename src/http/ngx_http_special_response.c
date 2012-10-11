@@ -289,13 +289,23 @@ static char ngx_http_error_416_page[] =
 ;
 
 
-static char ngx_http_error_494_page[] =
+static char ngx_http_error_429_page[] =
 "<html>" CRLF
-"<head><title>400 Request Header Or Cookie Too Large</title></head>"
+"<head><title>429 Too Many Requests</title></head>"
 CRLF
 "<body bgcolor=\"white\">" CRLF
-"<h1>400 Bad Request</h1>" CRLF
-"<p>Request header or cookie too large."
+"<h1>429 Too Many Requests</h1>" CRLF
+"<p>Too Many Requests."
+;
+
+
+static char ngx_http_error_431_page[] =
+"<html>" CRLF
+"<head><title>431 Request Header Fields Too Large</title></head>"
+CRLF
+"<body bgcolor=\"white\">" CRLF
+"<h1>431 Request Header Fields Too Large</h1>" CRLF
+"<p>request header fields too large."
 ;
 
 
@@ -385,6 +395,16 @@ static char ngx_http_error_507_page[] =
 ;
 
 
+static char ngx_http_error_511_page[] =
+"<html>" CRLF
+"<head><title>511 Network Authentication Required</title></head>" CRLF
+"<body bgcolor=\"white\">" CRLF
+"<h1>511 Network Authentication Required</h1>" CRLF
+"<p>You need to "
+"authenticate with the local network in order to gain access."
+;
+
+
 static ngx_str_t ngx_http_error_pages[] = {
 
     ngx_null_string,                     /* 201, 204 */
@@ -421,11 +441,25 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_414_page),
     ngx_string(ngx_http_error_415_page),
     ngx_string(ngx_http_error_416_page),
+    ngx_null_string,                     /* 417 */
+    ngx_null_string,                     /* 418 */
+    ngx_null_string,                     /* 419 */
+    ngx_null_string,                     /* 420 */
+    ngx_null_string,                     /* 421 */
+    ngx_null_string,                     /* 422 */
+    ngx_null_string,                     /* 423 */
+    ngx_null_string,                     /* 424 */
+    ngx_null_string,                     /* 425 */
+    ngx_null_string,                     /* 426 */
+    ngx_null_string,                     /* 427 */
+    ngx_null_string,                     /* 428 */
+    ngx_string(ngx_http_error_429_page),
+    ngx_null_string,                     /* 430 */
+    ngx_string(ngx_http_error_431_page),
 
-#define NGX_HTTP_LAST_4XX  417
+#define NGX_HTTP_LAST_4XX  432
 #define NGX_HTTP_OFF_5XX   (NGX_HTTP_LAST_4XX - 400 + NGX_HTTP_OFF_4XX)
 
-    ngx_string(ngx_http_error_494_page), /* 494, request header too large */
     ngx_string(ngx_http_error_495_page), /* 495, https certificate error */
     ngx_string(ngx_http_error_496_page), /* 496, https no certificate */
     ngx_string(ngx_http_error_497_page), /* 497, http to https */
@@ -439,9 +473,13 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_504_page),
     ngx_null_string,                     /* 505 */
     ngx_null_string,                     /* 506 */
-    ngx_string(ngx_http_error_507_page)
+    ngx_string(ngx_http_error_507_page),
+    ngx_null_string,                     /* 508 */
+    ngx_null_string,                     /* 509 */
+    ngx_null_string,                     /* 510 */
+    ngx_string(ngx_http_error_511_page),
 
-#define NGX_HTTP_LAST_5XX  508
+#define NGX_HTTP_LAST_5XX  512
 
 };
 
@@ -547,7 +585,6 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
             case NGX_HTTP_TO_HTTPS:
             case NGX_HTTPS_CERT_ERROR:
             case NGX_HTTPS_NO_CERT:
-            case NGX_HTTP_REQUEST_HEADER_TOO_LARGE:
                 r->err_status = NGX_HTTP_BAD_REQUEST;
                 break;
         }
