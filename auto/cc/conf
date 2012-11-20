@@ -196,6 +196,20 @@ if [ "$NGX_PLATFORM" != win32 ]; then
                           return 1;"
     . auto/feature
 
+    CC_TEST_FLAGS="-rdynamic"
+    ngx_feature="cc -rdynamic"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test=
+    . auto/feature
+    CC_TEST_FLAGS=
+    if [ $ngx_found = yes ]; then
+        NGX_HAVE_RDYNAMIC=yes
+    fi
+
 #    ngx_feature="inline"
 #    ngx_feature_name=
 #    ngx_feature_run=no

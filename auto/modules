@@ -69,7 +69,19 @@ if [ $NGX_DSO = YES ] ; then
     CORE_MODULES="$CORE_MODULES $DSO_MODULE"
     CORE_SRCS="$CORE_SRCS $DSO_SRCS"
     CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
-    LINK="$LINK -rdynamic"
+
+    if [ -n $NGX_HAVE_RDYNAMIC ]; then
+        LINK="$LINK -rdynamic"
+    else
+        cat << END
+
+the '-rdynamic' link option required by dso is not supported by your compiler,
+        please disable dso (--without-dso).
+
+END
+    exit 1
+    fi
+
 fi
 
 
