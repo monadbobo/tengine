@@ -105,6 +105,26 @@ ngx_ssl_init(ngx_log_t *log)
 
     OpenSSL_add_all_algorithms();
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef SSL_OP_NO_COMPRESSION
+    {
+    /*
+     * Disable gzip compression in OpenSSL prior to 1.0.0 version,
+     * this saves about 522K per connection.
+     */
+    int                  n;
+    STACK_OF(SSL_COMP)  *ssl_comp_methods;
+
+    ssl_comp_methods = SSL_COMP_get_compression_methods();
+    n = sk_SSL_COMP_num(ssl_comp_methods);
+
+    while (n--) {
+        (void) sk_SSL_COMP_pop(ssl_comp_methods);
+    }
+    }
+#endif
+#endif
+
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
     if (ngx_ssl_connection_index == -1) {
@@ -524,6 +544,7 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     return NGX_OK;
 }
 
+
 ngx_int_t
 ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 {
@@ -534,7 +555,7 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 
     /*
      * Elliptic-Curve Diffie-Hellman parameters are either "named curves"
-     * from RFC 4492 section 5.1.1, or explicitely described curves over
+     * from RFC 4492 section 5.1.1, or explicitly described curves over
      * binary fields. OpenSSL only supports the "named curves", which provide
      * maximum interoperability.
      */
@@ -563,6 +584,7 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 
     return NGX_OK;
 }
+
 
 ngx_int_t
 ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
@@ -1034,11 +1056,11 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             if (n == NGX_AGAIN) {
-                c->buffered |= NGX_SSL_BUFFERED;
                 return in;
             }
 
             in->buf->pos += n;
+            c->sent += n;
 
             if (in->buf->pos == in->buf->last) {
                 in = in->next;
@@ -2479,14 +2501,17 @@ ngx_ssl_read_x509(char *filename, X509 **x509, ngx_ssl_read_bio_handler_pt *cb)
 static int
 ngx_ssl_pphrase_handle_cb(char *buf, int size, int rwflag, void *conf)
 {
+    int         k, len, ci;
     FILE       *fp;
     char        c, b[NGX_MAX_PATH];
     u_char     *p;
     ngx_str_t   file;
-    ngx_int_t   k, len = -1;
+
     static int  first_in = 1;
 
     ngx_http_ssl_pphrase_dialog_conf_t  *dialog = conf;
+
+    len = -1;
 
     if (ngx_strcmp(dialog->type->data, (u_char *) "builtin") == 0) {
         if (first_in) {
@@ -2530,7 +2555,10 @@ ngx_ssl_pphrase_handle_cb(char *buf, int size, int rwflag, void *conf)
             return -1;
         }
 
-        for (k = 0; (c = fgetc(fp)) != EOF && k < size; /* void */) {
+        for (k = 0; (ci = fgetc(fp)) != EOF && k < size; /* void */) {
+
+            c = (char) ci;
+
             if (c == '\n' || c == '\r') {
                 break;
             }
